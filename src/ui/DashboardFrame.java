@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import model.User;
 import service.Library;
+import service.NotificationManager;
 
 public class DashboardFrame extends JFrame {
     private User u;
@@ -47,7 +48,26 @@ public class DashboardFrame extends JFrame {
 
         // tabs for different sections
         JTabbedPane tp = new JTabbedPane();
-        tp.addTab("Search Books", new BookSearchPanel(lib));
+
+        ReservationsPanel waitlistPanel = new ReservationsPanel(u, lib);
+
+        // update notification badge title
+        Runnable updateBadge = () -> {
+            int count = NotificationManager.unreadCount(u.getId());
+            for (int i = 0; i < tp.getTabCount(); i++) {
+                if (tp.getTitleAt(i).startsWith("Notifications")) {
+                    tp.setTitleAt(i, (count > 0) ? "Notifications (" + count + ")" : "Notifications");
+                    break;
+                }
+            }
+        };
+
+        NotificationsPanel notifPanel = new NotificationsPanel(u, updateBadge);
+
+        BookSearchPanel searchPanel = new BookSearchPanel(u, lib, waitlistPanel::reload);
+        tp.addTab("Search Books", searchPanel);
+
+        LoansPanel loansPanel = isadmin ? null : new LoansPanel(u);
 
         if (isadmin) {
             // admin tabs
@@ -57,14 +77,43 @@ public class DashboardFrame extends JFrame {
         } else {
             // borrower tabs
             tp.addTab("Borrow / Return", new IssueReturnPanel(u, lib, lib));
-            tp.addTab("My Loans", new LoansPanel(u));
+            tp.addTab("My Loans", loansPanel);
+            tp.addTab("My Waitlist", waitlistPanel);
         }
+
+        int unread = NotificationManager.unreadCount(u.getId());
+        String notifTabTitle = (unread > 0) ? "Notifications (" + unread + ")" : "Notifications";
+        tp.addTab(notifTabTitle, notifPanel);
+
+        // refresh tabs when user switches to them
+        tp.addChangeListener(e -> {
+            int sel = tp.getSelectedIndex();
+            if (sel != -1) {
+                String title = tp.getTitleAt(sel);
+                if (title.startsWith("Notifications")) {
+                    notifPanel.reload();
+                } else if ("My Waitlist".equals(title)) {
+                    waitlistPanel.reload();
+                } else if ("Search Books".equals(title)) {
+                    searchPanel.reload();
+                } else if ("My Loans".equals(title) && loansPanel != null) {
+                    loansPanel.loadloan();
+                }
+            }
+        });
 
         add(tp, BorderLayout.CENTER);
 
-        setSize(800, 500);
+        setSize(850, 520);
         setLocationRelativeTo(null);
         setVisible(true);
+
+        // popup after login if unread count > 0
+        if (unread > 0) {
+            JOptionPane.showMessageDialog(this,
+                    "You have " + unread + " unread notification(s)!\nA reserved book may now be available.",
+                    "Notifications", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     // for testing directly

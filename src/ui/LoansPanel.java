@@ -24,7 +24,7 @@ public class LoansPanel extends JPanel {
     private TransactionDAO txndao = new TransactionDAOImpl();
 
     // load loans from database
-    private void loadloan() {
+    public void loadloan() {
         try {
             tablem.setRowCount(0);
             List<IssueTransaction> ll = txndao.findActiveByUser(u.getId());

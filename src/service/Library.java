@@ -61,6 +61,11 @@ public class Library implements Borrowable, Searchable, Reportable {
         }
         inventory.add(item);
         System.out.println("[CATALOG] Added: " + item.getTitle() + " (ISBN: " + item.getIsbn() + ")");
+        waitlistManager.notifyBookArrived(item.getIsbn());
+    }
+
+    public WaitlistManager getWaitlistManager() {
+        return waitlistManager;
     }
 
     public void removeItem(String isbn) throws SQLException {
@@ -129,7 +134,7 @@ public class Library implements Borrowable, Searchable, Reportable {
 
         if (!item.hasAvailableCopy()) {
             System.out.println("[OUT OF STOCK] No copies of '" + item.getTitle() + "' available.");
-            waitlistManager.addToWaitlist(item.getIsbn(), user);
+            waitlistManager.addToWaitlist(item.getIsbn(), item.getTitle(), user);
             return;
         }
 
@@ -150,6 +155,7 @@ public class Library implements Borrowable, Searchable, Reportable {
 
         activeLoans.put(loanKey, txn);
         userLoanCounts.put(user.getId(), currentLoans + 1);
+        waitlistManager.markFulfilled(item.getIsbn(), user.getId());   // NOTIFIED -> FULFILLED
 
         System.out.println("[ISSUE SUCCESS] Issued '" + item.getTitle() + "' to " + user.getName()
                 + " | Due Date: " + txn.getDueDate());
@@ -201,7 +207,10 @@ public class Library implements Borrowable, Searchable, Reportable {
 
         ReturnTransaction returnTxn = new ReturnTransaction(issueTxn, LocalDate.now());
         try {
-            returnTxn.process();
+            item.checkInCopies();
+            if (issueTxn.getBook() != item) {
+                issueTxn.getBook().checkInCopies();
+            }
         } catch (IllegalStateException e) {
             System.out.println("[RETURN ERROR] " + e.getMessage());
             return;

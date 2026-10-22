@@ -12,8 +12,13 @@ CREATE TABLE fines(fine_id INT AUTO_INCREMENT PRIMARY KEY, txn_id INT NOT NULL,
 amount DECIMAL(10,2) NOT NULL DEFAULT 0.00, paid_status BOOLEAN NOT NULL DEFAULT FALSE,
 FOREIGN KEY (txn_id) REFERENCES transactions(txn_id), CHECK (amount>=0));
 
-CREATE TABLE waitlist(isbn VARCHAR(20) NOT NULL, user_id INT NOT NULL, request_date DATE NOT NULL, 
-PRIMARY KEY(isbn, user_id), FOREIGN KEY (isbn) REFERENCES books(isbn), FOREIGN KEY(user_id) REFERENCES users(user_id));
+CREATE TABLE waitlist(isbn VARCHAR(20) NOT NULL, title VARCHAR(200), user_id INT NOT NULL, request_date DATETIME(6) NOT NULL, 
+status VARCHAR(20) NOT NULL DEFAULT 'WAITING',
+PRIMARY KEY(isbn, user_id), FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE);
+
+CREATE TABLE notifications(notification_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NOT NULL, 
+message VARCHAR(255) NOT NULL, is_read BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE);
 
 INSERT INTO users
     (name, email, role, password_hash, contact, status)
